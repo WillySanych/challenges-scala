@@ -1,3 +1,11 @@
-import io.circe.generic.auto._
+import io.circe._
+import io.circe.generic.semiauto._
 
-case class TodoItem(text: String, date: String, status: String)
+import java.time.LocalDate
+
+case class TodoItem(text: String, date: LocalDate, completed: Boolean)
+
+object TodoItem:
+
+  given decodeTodoItem: Decoder[TodoItem] = deriveDecoder[TodoItem]
+  given encodeTodoItem: Encoder.AsObject[TodoItem] = deriveEncoder[TodoItem]

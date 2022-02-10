@@ -8,7 +8,6 @@ import io.circe.Encoder
 import org.http4s.circe.jsonDecoder
 import org.http4s.circe.CirceEntityCodec.circeEntityEncoder
 import org.http4s.circe.CirceEntityCodec.circeEntityDecoder
-import io.circe.generic.auto._
 
 trait TodoListRoutes[F[_]]:
   val dsl = Http4sDsl[F]
@@ -54,8 +53,13 @@ trait TodoListRoutes[F[_]]:
       case req @ POST -> Root / "item" =>
         for
           item <- req.as[TodoItem]
-          _ <- Storage.prepend(item)
-          resp <- Ok(item)
+          isItem <- Storage.add(item)
+          resp <- isItem match {
+            case true =>
+              Ok(item)
+            case false =>
+              Ok("Already exists")
+          }
         yield
           resp
 
