@@ -1,8 +1,6 @@
 import akka.NotUsed
-import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
-import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
-import Non_Blocking_Philosophers.*
-import Forks.forks
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior, SpawnProtocol}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
@@ -15,25 +13,11 @@ object Dining {
 
     val listPhilosophers = List("Philoposher 1", "Philoposher 2", "Philoposher 3", "Philoposher 4", "Philoposher 5")
 
-    def philosophers = if(blocking == 0) non_Blocking_Philosophers() else blocking_Philosophers()
-
-    def non_Blocking_Philosophers (): Unit = {
-      val philosophers = listPhilosophers.zipWithIndex.map { case (name, i) =>
-        ctx.spawn(Non_Blocking_Philosophers(name, i, ((i + 1) % forks.length)), name.replace(" ", ""))
-      }
-
-      philosophers.foreach(_ ! Non_Blocking_Philosophers.Thinks)
+    val philosophers = listPhilosophers.zipWithIndex.map { case (name, i) =>
+      ctx.spawn(nonBlockingPhilosophers(name, i, ((i + 1) % 5)), name.replace(" ", ""))
     }
 
-    def blocking_Philosophers (): Unit = {
-      val philosophers = listPhilosophers.zipWithIndex.map { case (name, i) =>
-        ctx.spawn(Blocking_Philosophers(name, i, ((i + 1) % forks.length)), name.replace(" ", ""))
-      }
-
-      philosophers.foreach(_ ! Blocking_Philosophers.Thinks)
-    }
-
-    philosophers
+    philosophers.foreach(_ ! nonBlockingPhilosophers.Think)
 
     Behaviors.empty
   }

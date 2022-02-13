@@ -1,16 +1,18 @@
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
-import Non_Blocking_Philosophers._
-import Forks.forks
+import nonBlockingPhilosophers._
+import Forks.{setFork, getFork}
+import Dining._
 
-class Non_Blocking_Philosophers(ctx: ActorContext[Actions],
-                                name: String,
-                                leftFork: Int,
-                                rightFork: Int) {
+class nonBlockingPhilosophers(ctx: ActorContext[Actions],
+                              name: String,
+                              leftFork: Int,
+                              rightFork: Int) {
   
   private def thinks(): Behavior[Actions] = Behaviors.receiveMessage {
-    case Thinks =>
-      thinking()
+    case Think =>
+      println(s"$name: I'm thinking...")
+      action()
       ctx.self ! TakeLeftFork
       takeLeftFork()
     case _ => Behaviors.same
@@ -23,7 +25,7 @@ class Non_Blocking_Philosophers(ctx: ActorContext[Actions],
         ctx.self ! TakeRightFork
         takeRightFork()
       } else {
-        ctx.self ! Thinks
+        ctx.self ! Think
         thinks()
       }
     case _ => Behaviors.same
@@ -36,8 +38,8 @@ class Non_Blocking_Philosophers(ctx: ActorContext[Actions],
         ctx.self ! Eat
         eat()
       } else {
-        puttingLeftFork()
-        ctx.self ! Thinks
+        if (blocking == 0) {puttingLeftFork()}
+        ctx.self ! Think
         thinks()
       }
     case _ => Behaviors.same
@@ -45,7 +47,8 @@ class Non_Blocking_Philosophers(ctx: ActorContext[Actions],
 
   private def eat(): Behavior[Actions] = Behaviors.receiveMessage {
     case Eat =>
-      eating()
+      println(s"$name: I'm eating...")
+      action()
       ctx.self ! PutLeftFork
       putLeftFork()
     case _ => Behaviors.same
@@ -62,15 +65,15 @@ class Non_Blocking_Philosophers(ctx: ActorContext[Actions],
   private def putRightFork(): Behavior[Actions] = Behaviors.receiveMessage {
     case PutRightFork =>
       puttingRightFork()
-      ctx.self ! Thinks
+      ctx.self ! Think
       thinks()
     case _ => Behaviors.same
   }
 
   private def takingLeftFork(): Boolean = {
-    if (forks(leftFork)) {
+    if (getFork(leftFork)) {
+      setFork(leftFork, false)
       println(s"$name: Taking left fork $leftFork.")
-      forks(leftFork) = false
       true
     } else {
       println(s"$name: Left fork $leftFork is busy.")
@@ -79,43 +82,35 @@ class Non_Blocking_Philosophers(ctx: ActorContext[Actions],
   }
 
   private def takingRightFork(): Boolean = {
-    if (forks(rightFork)) {
+    if (getFork(rightFork)) {
+      setFork(rightFork, false)
       println(s"$name: Taking right fork $rightFork.")
-      forks(rightFork) = false
       true
     } else {
-      println(s"$name: Left fork $rightFork is busy.")
+      println(s"$name: Right fork $rightFork is busy.")
       false
     }
   }
 
-  private def eating(): Unit = {
-    println(s"$name: I'm eating...")
-    Thread.sleep(1000)
-  }
-
-  private def thinking(): Unit = {
-    println(s"$name: I'm thinking...")
+  private def action(): Unit = {
     Thread.sleep(1000)
   }
 
   private def puttingLeftFork(): Unit = {
+    setFork(leftFork, true)
     println(s"$name: Putting left fork $leftFork")
-    forks(leftFork) = true
   }
 
   private def puttingRightFork(): Unit = {
+    setFork(rightFork, true)
     println(s"$name: Putting right fork $rightFork")
-    forks(rightFork) = true
   }
 }
 
-object Non_Blocking_Philosophers {
+object nonBlockingPhilosophers {
 
   sealed trait Actions
-
-
-  case object Thinks extends Actions
+  case object Think extends Actions
   case object TakeLeftFork extends Actions
   case object TakeRightFork extends Actions
   case object Eat extends Actions
@@ -125,7 +120,7 @@ object Non_Blocking_Philosophers {
   def apply(name: String,
             leftFork: Int,
             rightFork: Int): Behavior[Actions] = Behaviors.setup { ctx =>
-    new Non_Blocking_Philosophers(ctx, name, leftFork, rightFork).thinks()
+    new nonBlockingPhilosophers(ctx, name, leftFork, rightFork).thinks()
   }
   
 }
